@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Email Triage App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  </head>
+  <body class="bg-slate-50">
+    <div id="root" class="min-h-screen"></div>
+
+    <script type="text/javascript">
+      const { useEffect, useState } = React;
+
+      function priorityColor(p) {
+        if (p >= 4) return "bg-red-100 text-red-800";
+        if (p === 3) return "bg-yellow-100 text-yellow-800";
+        return "bg-green-100 text-green-800";
+      }
+
+      function App() {
+        const [state, setState] = useState({ status: "loading" });
+        const [selected, setSelected] = useState(null);
+
+        useEffect(() => {
+          const run = async () => {
+            try {
+              setState({ status: "loading" });
+              const res = await fetch("/api/classify", { method: "POST" });
+              if (!res.ok) throw new Error(await res.text());
+              const data = await res.json();
+              setState({ status: "success", data });
+              setSelected(data[0] || null);
+            } catch (e) {
+              setState({ status: "error", error: e.message || "Unknown error" });
+            }
+          };
+          run();
+        }, []);
+
+        return React.createElement(
+          "div",
+          { className: "flex flex-col min-h-screen" },
+          React.createElement(
+            "header",
+            { className: "border-b bg-white px-4 py-3 flex items-center justify-between" },
+            React.createElement("h1", { className: "text-lg font-semibold" }, "Email Triage App"),
+            React.createElement(
+              "span",
+              { className: "text-xs text-slate-500" },
+              "LLM: OpenRouter / qwen2.5-7b-instruct"
+            )
+          ),
+          React.createElement(
+            "main",
+            { className: "flex flex-1 overflow-hidden" },
+            React.createElement(
+              "div",
+              { className: "w-1/2 border-r overflow-y-auto" },
+              state.status === "loading" &&
+                React.createElement(
+                  "div",
+                  { className: "p-4 text-sm text-slate-500" },
+                  "Lade Klassifikationen…"
+                ),
+              state.status === "error" &&
+                React.createElement(
+                  "div",
+                  { className: "p-4 text-sm text-red-600" },
+                  "Fehler beim Laden: ",
+                  state.error
+                ),
+              state.status === "success" &&
+                React.createElement(
+                  "ul",
+                  null,
+                  state.data.map((mail) =>
+                    React.createElement(
+                      "li",
+                      {
+                        key: mail.id,
+                        onClick: () => setSelected(mail),
+                        className:
+                          "px-4 py-3 border-b cursor-pointer hover:bg-slate-100 " +
+                          (selected && selected.id === mail.id ? "bg-slate-100" : "")
+                      },
+                      React.createElement(
+                        "div",
+                        { className: "flex items-center justify-between mb-1" },
+                        React.createElement("div", { className: "font-medium" }, mail.subject),
+                        React.createElement(
+                          "div",
+                          { className: "flex gap-2" },
+                          React.createElement(
+                            "span",
+                            {
+                              className:
+                                "text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-800"
+                            },
+                            mail.category
+                          ),
+                          React.createElement(
+                            "span",
+                            {
+                              className:
+                                "text-xs px-2 py-0.5 rounded-full " + priorityColor(mail.priority)
+                            },
+                            "Prio ",
+                            mail.priority
+                          )
+                        )
+                      ),
+                      React.createElement(
+                        "div",
+                        { className: "text-xs text-slate-500 mb-1" },
+                        mail.from,
+                        " · ",
+                        new Date(mail.received_at).toLocaleString()
+                      ),
+                      React.createElement(
+                        "div",
+                        { className: "text-sm text-slate-700 truncate" },
+                        mail.summary
+                      )
+                    )
+                  )
+                )
+            ),
+            React.createElement(
+              "div",
+              { className: "flex-1 overflow-y-auto p-4" },
+              selected
+                ? React.createElement(
+                    "div",
+                    { className: "space-y-4" },
+                    React.createElement(
+                      "div",
+                      null,
+                      React.createElement(
+                        "div",
+                        { className: "text-xs text-slate-500 mb-1" },
+                        "Von: ",
+                        selected.from
+                      ),
+                      React.createElement(
+                        "h2",
+                        { className: "text-lg font-semibold mb-2" },
+                        selected.subject
+                      ),
+                      React.createElement(
+                        "pre",
+                        {
+                          className:
+                            "whitespace-pre-wrap text-sm bg-white border rounded p-3"
+                        },
+                        selected.body
+                      )
+                    ),
+                    React.createElement(
+                      "div",
+                      { className: "bg-white border rounded p-3 space-y-2" },
+                      React.createElement(
+                        "div",
+                        { className: "text-sm font-semibold" },
+                        "LLM-Klassifikation"
+                      ),
+                      React.createElement(
+                        "div",
+                        { className: "text-sm" },
+                        React.createElement(
+                          "span",
+                          { className: "font-medium" },
+                          "Kategorie: "
+                        ),
+                        selected.category
+                      ),
+                      React.createElement(
+                        "div",
+                        { className: "text-sm" },
+                        React.createElement(
+                          "span",
+                          { className: "font-medium" },
+                          "Priorität: "
+                        ),
+                        selected.priority
+                      ),
+                      React.createElement(
+                        "div",
+                        { className: "text-sm" },
+                        React.createElement(
+                          "span",
+                          { className: "font-medium" },
+                          "Empfohlene Action: "
+                        ),
+                        React.createElement(
+                          "span",
+                          {
+                            className:
+                              "uppercase text-xs font-semibold px-2 py-0.5 rounded bg-slate-800 text-white"
+                          },
+                          selected.action
+                        )
+                      ),
+                      React.createElement(
+                        "div",
+                        { className: "text-sm" },
+                        React.createElement(
+                          "span",
+                          { className: "font-medium" },
+                          "Begründung: "
+                        ),
+                        selected.justification
+                      )
+                    )
+                  )
+                : React.createElement(
+                    "div",
+                    { className: "text-sm text-slate-500" },
+                    "Keine Email ausgewählt."
+                  )
+            )
+          )
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(React.createElement(App));
+    </script>
+  </body>
+</html>
